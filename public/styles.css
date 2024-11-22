@@ -1,0 +1,13 @@
+/* styles.css */
+.attendance-low {
+    color: red;
+    font-weight: bold;
+}
+
+.attendance-medium {
+    color: yellow;
+}
+
+.attendance-high {
+    color: green;
+}
