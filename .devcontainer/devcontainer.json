@@ -1,0 +1,15 @@
+{
+    "name": "PHP Development",
+    "image": "mcr.microsoft.com/devcontainers/php:8.2-bullseye",
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "bmewburn.vscode-intelephense-client", // PHP Intellisense
+          "xdebug.php-debug"                   // PHP Debugging
+        ]
+      }
+    },
+    "postCreateCommand": "composer install",
+    "forwardPorts": [8000]
+  }
+  
