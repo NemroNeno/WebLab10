@@ -140,3 +140,50 @@ function getClassSessions($classId, $studentId) {
     
     return $sessions;
 }
+
+function getSessionAttendance($sessionId) {
+    // Mock data for testing
+    return [
+        ['student_id' => 1, 'roll_number' => 'CS101', 'student_name' => 'Alice', 'status' => true],
+        ['student_id' => 2, 'roll_number' => 'CS102', 'student_name' => 'Bob', 'status' => false],
+        // Add more entries as needed
+    ];
+}
+
+function updateSessionAttendance($sessionId, $attendanceData) {
+    // Implement logic to update attendance in the data source
+    // For now, return true to simulate a successful update
+    return true;
+}
+
+function getSessionDetails($sessionId) {
+    // Mock data for testing
+    return [
+        'id' => $sessionId,
+        'date' => date('Y-m-d', strtotime("-{$sessionId} days")),
+        'total_students' => 35,
+        'present_count' => rand(25, 35),
+        'class_id' => 1 // Example class ID
+    ];
+}
+
+function updateSession($sessionId, $data) {
+    // Implement updating session details in the data source
+    // For now, return true to simulate a successful update
+    return true;
+}
+
+function saveNewSession($classId, $date, $attendanceData) {
+    // Implement logic to save the new session and attendance data
+    // For now, return true to simulate a successful save
+    return true;
+}
+
+function fetchClassStudents($classId) {
+    // Mock data for testing
+    return [
+        ['student_id' => 1, 'roll_number' => 'CS101', 'student_name' => 'Alice'],
+        ['student_id' => 2, 'roll_number' => 'CS102', 'student_name' => 'Bob'],
+        // Add more students as needed
+    ];
+}

@@ -134,6 +134,41 @@ session_start();
         border-radius: 4px;
         cursor: pointer;
     }
+
+    .action-btn {
+        padding: 6px 12px;
+        margin: 0 4px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .view-btn {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    .view-btn:hover {
+        background-color: #0056b3;
+    }
+
+    .edit-btn {
+        background-color: var(--warning-color);
+        color: #000;
+    }
+
+    .edit-btn:hover {
+        background-color: #e0a800;
+    }
+
+    .action-btn i {
+        font-size: 12px;
+    }
 </style>
 
 <div class="tabs">
@@ -252,6 +287,42 @@ session_start();
         });
     }
 
+    // Function to fetch students of a class
+    async function fetchClassStudents(classId) {
+        // Simulating API call to get students of the class
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                // Mock data for students
+                const students = [
+                    { student_id: 1, roll_number: 'CS101', student_name: 'Alice' },
+                    { student_id: 2, roll_number: 'CS102', student_name: 'Bob' },
+                    // Add more students as needed
+                ];
+                resolve(students);
+            }, 500); // Simulate network delay
+        });
+    }
+
+    // Function to display attendance form
+    function displayAttendanceForm(students) {
+        const tbody = document.getElementById('students-list');
+        tbody.innerHTML = '';
+
+        students.forEach(student => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${student.roll_number}</td>
+                <td>${student.student_name}</td>
+                <td>
+                    <button class="attendance-btn present" data-student-id="${student.student_id}" onclick="toggleAttendance(this)">
+                        Present
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
     // Update class card click handler to use async/await
     document.querySelectorAll('.class-card').forEach(card => {
         card.addEventListener('click', async () => {
@@ -274,32 +345,33 @@ session_start();
 
         sessions.forEach(session => {
             const row = document.createElement('tr');
+            const attendancePercentage = Math.round((session.present_count / session.total_students) * 100);
+
             row.innerHTML = `
-            <td>${session.date}</td>
-            <td>${session.total_students}</td>
-            <td>${session.present_count} (${Math.round(session.present_count / session.total_students * 100)}%)</td>
-            <td>
-                <button class="btn btn-primary btn-sm" onclick="viewSessionDetails(${session.id})">
-                    View Details
-                </button>
-                <button class="btn btn-warning btn-sm" onclick="editSession(${session.id})">
-                    Edit
-                </button>
-            </td>
-        `;
+                <td>${session.date}</td>
+                <td>${session.total_students}</td>
+                <td>${session.present_count} (${attendancePercentage}%)</td>
+                <td>
+                    <button class="action-btn view-btn" onclick="viewSessionDetails(${session.id})">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <button class="action-btn edit-btn" onclick="editSession(${session.id})">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </td>
+            `;
             tbody.appendChild(row);
         });
     }
 
     function viewSessionDetails(sessionId) {
-        // Implement session details view
-        console.log(`Viewing session ${sessionId}`);
+        window.open(`/templates/session_details.php?session_id=${sessionId}`, '_blank');
     }
 
     function editSession(sessionId) {
-        // Implement session editing
-        console.log(`Editing session ${sessionId}`);
+        window.location.href = `/templates/edit_session.php?session_id=${sessionId}`;
     }
+
     document.addEventListener('DOMContentLoaded', function () {
         // Tab switching
         const tabButtons = document.querySelectorAll('.tab-button');
@@ -363,17 +435,35 @@ session_start();
         document.getElementById('save-attendance').addEventListener('click', async () => {
             const selectedCard = document.querySelector('.class-card.selected');
             const date = document.getElementById('attendance-date').value;
-            const attendance = [];
+            if (!date) {
+                alert('Please select a date.');
+                return;
+            }
+            if (selectedCard) {
+                const classId = selectedCard.dataset.classId;
+                const attendance = [];
 
-            document.querySelectorAll('.attendance-btn').forEach(btn => {
-                attendance.push({
-                    studentId: btn.dataset.studentId,
-                    status: btn.classList.contains('present')
+                document.querySelectorAll('.attendance-btn').forEach(btn => {
+                    attendance.push({
+                        studentId: btn.dataset.studentId,
+                        status: btn.classList.contains('present')
+                    });
                 });
-            });
 
-            await saveAttendance(selectedCard.dataset.classId, date, attendance); // Implement this
-            // Show success message and return to sessions view
+                const success = await saveAttendance(classId, date, attendance);
+                if (success) {
+                    alert('Attendance saved successfully.');
+                    // Refresh the sessions list
+                    const sessions = await fetchClassSessions(classId);
+                    displaySessions(sessions);
+
+                    // Show the sessions view
+                    document.getElementById('sessions-view').style.display = 'block';
+                    document.getElementById('attendance-view').style.display = 'none';
+                } else {
+                    alert('Failed to save attendance.');
+                }
+            }
         });
     });
 
