@@ -1,4 +1,5 @@
-<?php $content = 'loginContent.php'; include('../templates/master.php'); ?>
+
+<?php $content = 'loginContent.php'; include('master.php'); ?>
 <!-- loginContent.php -->
 <style>
     /* General Styles */
@@ -74,7 +75,12 @@
 
 <div class="login-container">
     <h2>Login</h2>
-    <form method="POST" action="../controllers/AuthController.php">
+    <?php if (isset($error)): ?>
+        <div class="flash flash-error">
+            <?= htmlspecialchars($error) ?>
+        </div>
+    <?php endif; ?>
+    <form method="POST" action="login.php">
         <label>Email:</label>
         <input type="email" name="email" placeholder="Enter your email" required>
         <label>Password:</label>

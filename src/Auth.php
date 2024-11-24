@@ -1,10 +1,15 @@
 <?php
-// src/Auth.php
-session_start();
+require_once '../models/UserModel.php';
 
 class Auth {
-    public static function login($username, $password) {
-        // Implement login logic
+    public static function login($email, $password) {
+        $user = UserModel::authenticate($email, $password);
+        if ($user) {
+            $_SESSION['user'] = $user;
+            return true;
+        } else {
+            return true;
+        }
     }
 
     public static function check() {

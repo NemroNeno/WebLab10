@@ -118,7 +118,7 @@ session_start();
             </div>
             <div class="nav-links">
                 <?php if (Auth::check()): ?>
-                    <?php if (Auth::user()['role_id'] == 1): // Teacher ?>
+                    <?php if (Auth::user()['role_id'] == 2): // Teacher ?>
                         <a href="/teacher/dashboard"><i class="fas fa-home"></i> Dashboard</a>
                         <a href="/teacher/sessions"><i class="fas fa-calendar"></i> Sessions</a>
                         <a href="/teacher/reports"><i class="fas fa-chart-bar"></i> Reports</a>
@@ -132,7 +132,7 @@ session_start();
             </div>
             <?php if (Auth::check()): ?>
                 <div class="user-info">
-                    <span><i class="fas fa-user"></i> <?= htmlspecialchars(Auth::user()['username']) ?></span>
+                    <span><i class="fas fa-user"></i> <?= htmlspecialchars(Auth::user()['fullname']) ?></span>
                     <a href="/logout" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
                 </div>
             <?php endif; ?>
