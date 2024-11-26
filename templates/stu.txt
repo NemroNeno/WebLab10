@@ -1,0 +1,26 @@
+<?php foreach ($courses as $course): ?>
+        <table class="attendance-table" id="attendance-<?= $course['id'] ?>">
+            <thead>
+                <tr>
+                    <th>Session ID</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $sessions = getClassSessions($studentId, $course['id']); // Fetching the sessions for the class
+                foreach ($sessions as $session):
+                    $statusClass = $session['status'] ? 'status-present' : 'status-absent';
+                ?>
+                    <tr>
+                        <td><?= $session['id'] ?></td>
+                        <td><?= date('d M Y', strtotime($session['date'])) ?></td>
+                        <td class="<?= $statusClass ?>">
+                            <?= $session['status'] ? 'Present' : 'Absent' ?>
+                        </td>
+                        <td><?= htmlspecialchars($session['notes'] ?? '') ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endforeach; ?>

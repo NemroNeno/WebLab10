@@ -35,9 +35,6 @@ CREATE TABLE sessions (
 -- Create attendance table
 CREATE TABLE attendance (
     id SERIAL PRIMARY KEY,
-    class_id INT REFERENCES classes(id),
-    student_id INT REFERENCES users(id),
-    session_id INT REFERENCES sessions(id),
+    enrollment_id INT REFERENCES enrollment(id),
     is_present BOOLEAN NOT NULL,
-    comments VARCHAR(200)
 );

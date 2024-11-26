@@ -14,7 +14,7 @@ class Database {
             // Set PDO error mode to exception
             $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-          
+        //   echo "connection successful";
             return $conn;
         } catch (PDOException $e) {
             echo "Connection failed: " . $e->getMessage();
@@ -24,5 +24,5 @@ class Database {
 }
 
 // Test the connection
-Database::connect();
+$conn = Database::connect();
 ?>

@@ -1,5 +1,8 @@
 <?php
+session_set_cookie_params(['path' => '/', 'domain' => 'localhost', 'secure' => false, 'httponly' => true]);
 require_once '../src/Classes.php';
+require_once '../controllers/DataInjectionController.php';
+require_once '../controllers/StudentAttendanceController.php';
 session_start();
 ?>
 <!-- templates/student_view.php -->
@@ -91,56 +94,23 @@ session_start();
     
     <div class="class-cards">
         <?php
-        // Fetch classes for the current student
-        $studentId = Auth::user()['id'];
-        $classes = getStudentClasses($studentId); // You'll need to implement this function
-
-        foreach ($classes as $class): 
-            $attendancePercentage = calculateAttendancePercentage($studentId, $class['id']); // Implement this
-            $percentageClass = $attendancePercentage >= 85 ? 'percentage-high' : 
-                            ($attendancePercentage >= 75 ? 'percentage-medium' : 'percentage-low');
+        // Fetch courses and attendance data for the current student
+        $studentId = $current_userId;
+        $courses = getCoursesAndAttendancePercentage($studentId); // Fetching courses and attendance percentage
+        foreach ($courses as $course): 
         ?>
-            <div class="class-card" data-class-id="<?= $class['id'] ?>">
-                <h3><?= htmlspecialchars($class['name']) ?></h3>
-                <p><?= htmlspecialchars($class['course_code']) ?></p>
+            <div class="class-card" data-class-id="<?= $course['id'] ?>">
+                <h3><?= htmlspecialchars($course['name']) ?></h3>
                 <div class="attendance-stats">
-                    <span>Total Sessions: <?= $class['total_sessions'] ?></span>
-                    <span class="<?= $percentageClass ?>">
-                        Attendance: <?= $attendancePercentage ?>%
+                    <span class="<?= $course['is_present'] ?>">
+                        StartTime: <?= $course['start_time'] ?> <br>
+                        EndTime: <?= $course['end_time'] ?> <br>
+                        <?= $course['is_present']   ==1?'Present':'Absent' ?>
                     </span>
                 </div>
             </div>
         <?php endforeach; ?>
     </div>
-
-    <?php foreach ($classes as $class): ?>
-        <table class="attendance-table" id="attendance-<?= $class['id'] ?>">
-            <thead>
-                <tr>
-                    <th>Session ID</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Notes</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                $sessions = getClassSessions($class['id'], $studentId); // Implement this
-                foreach ($sessions as $session):
-                    $statusClass = $session['status'] ? 'status-present' : 'status-absent';
-                ?>
-                    <tr>
-                        <td><?= $session['id'] ?></td>
-                        <td><?= date('d M Y', strtotime($session['date'])) ?></td>
-                        <td class="<?= $statusClass ?>">
-                            <?= $session['status'] ? 'Present' : 'Absent' ?>
-                        </td>
-                        <td><?= htmlspecialchars($session['notes'] ?? '') ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php endforeach; ?>
 </div>
 
 <script>

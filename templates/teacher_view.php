@@ -1,6 +1,11 @@
 <?php
-require_once '../src/Classes.php';
+session_set_cookie_params(['path' => '/', 'domain' => 'localhost', 'secure' => false, 'httponly' => true]);
 session_start();
+require_once '../src/Classes.php';
+require_once '../controllers/DataInjectionController.php';
+require_once '../controllers/TeacherAttandanceController.php';
+
+
 ?>
 <!-- templates/teacher_view.php -->
 <style>
@@ -172,6 +177,12 @@ session_start();
 </style>
 
 <div class="tabs">
+    <!-- Introduction -->
+    <div style="display: flex; flex-direction: column;">
+        <h1 style="color: #0056b3;"><?= htmlspecialchars($current_fullname) ?></h1>
+        <h2 style="color: #e0a800;"><?= htmlspecialchars($current_email) ?></h2>
+    </div>
+
     <div class="tab-buttons">
         <button class="tab-button active" data-tab="existing-classes">Existing Classes</button>
         <button class="tab-button" data-tab="add-class">Add New Class</button>
@@ -180,18 +191,20 @@ session_start();
     <div class="tab-content active" id="existing-classes">
         <div class="class-cards">
             <?php
-            $classes = getTeacherClasses(Auth::user()['id']); // Implement this function
+            $classes = getClassesForTeacher($current_userId);
             foreach ($classes as $class):
-                ?>
+                echo $class['enollment_id'];
+            ?>
                 <div class="class-card" data-class-id="<?= $class['id'] ?>">
-                    <h3><?= htmlspecialchars($class['name']) ?></h3>
-                    <p>Course Code: <?= htmlspecialchars($class['course_code']) ?></p>
-                    <p>Students: <?= $class['student_count'] ?></p>
+                    <h3 style="color: red;"><?= htmlspecialchars($class['name']) ?></h3>
+                    <p>Students: <?= count(getStudentsInClass($class['id'])) ?></p>
+                    <p>Start time: <?= $class['start_time']?></p>
+                    <p>End time: <?= $class['end_time']?></p>
                 </div>
             <?php endforeach; ?>
         </div>
 
-        <div id="sessions-view" style="display: none;">
+        <!-- <div id="sessions-view" style="display: none;">
             <h3>Class Sessions</h3>
             <button id="new-session-btn" class="save-btn">Add New Session</button>
             <table class="sessions-table">
@@ -205,272 +218,199 @@ session_start();
                 </thead>
                 <tbody id="sessions-list"></tbody>
             </table>
-        </div>
+        </div> -->
 
         <div id="attendance-view" style="display: none;">
-            <h3>Mark Attendance</h3>
-            <div class="form-group">
-                <label>Date:</label>
-                <input type="date" id="attendance-date">
-            </div>
-            <table class="students-table">
-                <thead>
-                    <tr>
-                        <th>Roll Number</th>
-                        <th>Name</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="students-list"></tbody>
-            </table>
-            <button id="save-attendance" class="save-btn">Save Attendance</button>
+            <form method="POST" action="../controllers/TeacherAttandanceController.php">
+                <table class="students-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="students-list"></tbody>
+                </table>
+                <button id="save-attendance" type="submit" class="save-btn">Save Attendance</button>
+            </form>
         </div>
     </div>
 
     <div class="tab-content" id="add-class">
-        <form class="new-class-form" id="new-class-form">
+        <form class="new-class-form" id="new-class-form" method="POST" action="../controllers/NewClassController.php">
             <div class="form-group">
                 <label>Class Name:</label>
                 <input type="text" name="class_name" required>
             </div>
+
+            <!-- Start Time -->
             <div class="form-group">
-                <label>Course Code:</label>
-                <input type="text" name="course_code" required>
+                <label for="start-time">Start Time:</label>
+                <input type="time" id="start-time" name="start_time" required>
             </div>
+
+            <!-- End Time -->
             <div class="form-group">
-                <label>Description:</label>
-                <textarea name="description"></textarea>
+                <label for="end-time">End Time:</label>
+                <input type="time" id="end-time" name="end_time" required>
+                <input name="userIdInput" value=`${$current_userId}` hidden/>
             </div>
-            <div class="student-list">
-                <h4>Students</h4>
-                <div id="student-entries">
-                    <div class="form-group">
-                        <input type="text" name="student_roll[]" placeholder="Roll Number">
-                        <input type="text" name="student_name[]" placeholder="Student Name">
-                    </div>
+
+            <!-- Dynamic population of students and then selecting them -->
+            <div class="form-group student-list">
+                <h4>Select Students</h4>
+                    <ul>
+                        <?php
+                        // Replace this with your database connection
+                        require_once '../config/db.php';
+
+                        // Fetch students from the database
+                        try {
+                            $query = "SELECT id, fullname FROM users WHERE role_id = 2"; // Assuming `role_id = 2` is for students
+                            $stmt = $conn->prepare($query);
+                            $stmt->execute();
+                            $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                            foreach ($students as $student) {
+                                echo "
+                                <li>
+                                    <label>
+                                        <input type='checkbox' name='selected_students[]' value='{$student['id']}'>
+                                        {$student['fullname']}
+                                    </label>
+                                </li>";
+                            }
+                        } catch (PDOException $e) {
+                            echo "Error fetching students: " . $e->getMessage();
+                        }
+                        ?>
+                    </ul>
                 </div>
-                <button type="button" class="add-student-btn" id="add-student">Add Student</button>
-            </div>
             <button type="submit" class="save-btn">Create Class</button>
         </form>
     </div>
 </div>
 
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+
 <script>
-    // Add this function in your script section
-    async function fetchClassSessions(classId) {
-        // Simulating API call with promise
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                // Mock data for sessions
-                const sessions = [];
-                const totalStudents = 35;
+    document.querySelector('[data-tab="existing-classes"]').addEventListener('click', () => {
+        document.getElementById('existing-classes').classList.add('active');
+        document.getElementById('add-class').classList.remove('active');
+    });
 
-                // Generate 30 days of mock session data
-                for (let i = 0; i < 30; i++) {
-                    const date = new Date();
-                    date.setDate(date.getDate() - i);
-                    const presentCount = Math.floor(Math.random() * (totalStudents - 25) + 25); // Random between 25-35
+    const addClassButton = document.querySelector('[data-tab="add-class"]').addEventListener('click', () => {
+        document.getElementById('existing-classes').classList.remove('active');
+        document.getElementById('add-class').classList.add('active');
+    });
 
-                    sessions.push({
-                        id: i + 1,
-                        date: date.toISOString().split('T')[0],
-                        total_students: totalStudents,
-                        present_count: presentCount,
-                        absent_count: totalStudents - presentCount,
-                        class_id: classId
-                    });
-                }
-
-                resolve(sessions);
-            }, 500); // Simulate network delay
-        });
-    }
-
-    // Function to fetch students of a class
-    async function fetchClassStudents(classId) {
-        // Simulating API call to get students of the class
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                // Mock data for students
-                const students = [
-                    { student_id: 1, roll_number: 'CS101', student_name: 'Alice' },
-                    { student_id: 2, roll_number: 'CS102', student_name: 'Bob' },
-                    // Add more students as needed
-                ];
-                resolve(students);
-            }, 500); // Simulate network delay
-        });
-    }
-
-    // Function to display attendance form
-    function displayAttendanceForm(students) {
-        const tbody = document.getElementById('students-list');
-        tbody.innerHTML = '';
-
-        students.forEach(student => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${student.roll_number}</td>
-                <td>${student.student_name}</td>
-                <td>
-                    <button class="attendance-btn present" data-student-id="${student.student_id}" onclick="toggleAttendance(this)">
-                        Present
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-
-    // Update class card click handler to use async/await
     document.querySelectorAll('.class-card').forEach(card => {
-        card.addEventListener('click', async () => {
-            const classId = card.dataset.classId;
+    card.addEventListener('click', async () => {
+        const classId = card.getAttribute('data-class-id');
 
-            // Show loading state
-            document.getElementById('sessions-list').innerHTML = '<tr><td colspan="4">Loading sessions...</td></tr>';
+        let attendanceStatus = false;
 
-            // Fetch and display sessions
-            const sessions = await fetchClassSessions(classId);
-            displaySessions(sessions);
+        const attendanceView = document.getElementById('attendance-view');
+        attendanceView.style.display = 'block';
 
-            document.getElementById('sessions-view').style.display = 'block';
-            document.getElementById('attendance-view').style.display = 'none';
-        });
-    });
-    function displaySessions(sessions) {
-        const tbody = document.getElementById('sessions-list');
-        tbody.innerHTML = '';
-
-        sessions.forEach(session => {
-            const row = document.createElement('tr');
-            const attendancePercentage = Math.round((session.present_count / session.total_students) * 100);
-
-            row.innerHTML = `
-                <td>${session.date}</td>
-                <td>${session.total_students}</td>
-                <td>${session.present_count} (${attendancePercentage}%)</td>
-                <td>
-                    <button class="action-btn view-btn" onclick="viewSessionDetails(${session.id})">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                    <button class="action-btn edit-btn" onclick="editSession(${session.id})">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
-    }
-
-    function viewSessionDetails(sessionId) {
-        window.open(`/templates/session_details.php?session_id=${sessionId}`, '_blank');
-    }
-
-    function editSession(sessionId) {
-        window.location.href = `/templates/edit_session.php?session_id=${sessionId}`;
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        // Tab switching
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const tabId = button.dataset.tab;
-
-                tabButtons.forEach(btn => btn.classList.remove('active'));
-                tabContents.forEach(content => content.classList.remove('active'));
-
-                button.classList.add('active');
-                document.getElementById(tabId).classList.add('active');
-            });
-        });
-
-        // Class card selection
-        const classCards = document.querySelectorAll('.class-card');
-        classCards.forEach(card => {
-            card.addEventListener('click', async () => {
-                classCards.forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-
-                console.log("clicked");
-
-                const classId = card.dataset.classId;
-                const sessions = await fetchClassSessions(classId); // Implement this
-                displaySessions(sessions);
-
-                document.getElementById('sessions-view').style.display = 'block';
-                document.getElementById('attendance-view').style.display = 'none';
-            });
-        });
-
-        // New session button
-        document.getElementById('new-session-btn').addEventListener('click', async () => {
-            const selectedCard = document.querySelector('.class-card.selected');
-            if (selectedCard) {
-                const classId = selectedCard.dataset.classId;
-                const students = await fetchClassStudents(classId); // Implement this
-                displayAttendanceForm(students);
-
-                document.getElementById('sessions-view').style.display = 'none';
-                document.getElementById('attendance-view').style.display = 'block';
-            }
-        });
-
-        // Add student button in new class form
-        document.getElementById('add-student').addEventListener('click', () => {
-            const studentEntry = document.createElement('div');
-            studentEntry.className = 'form-group';
-            studentEntry.innerHTML = `
-            <input type="text" name="student_roll[]" placeholder="Roll Number">
-            <input type="text" name="student_name[]" placeholder="Student Name">
-        `;
-            document.getElementById('student-entries').appendChild(studentEntry);
-        });
-
-        // Save attendance
-        document.getElementById('save-attendance').addEventListener('click', async () => {
-            const selectedCard = document.querySelector('.class-card.selected');
-            const date = document.getElementById('attendance-date').value;
-            if (!date) {
-                alert('Please select a date.');
-                return;
-            }
-            if (selectedCard) {
-                const classId = selectedCard.dataset.classId;
-                const attendance = [];
-
-                document.querySelectorAll('.attendance-btn').forEach(btn => {
-                    attendance.push({
-                        studentId: btn.dataset.studentId,
-                        status: btn.classList.contains('present')
-                    });
-                });
-
-                const success = await saveAttendance(classId, date, attendance);
-                if (success) {
-                    alert('Attendance saved successfully.');
-                    // Refresh the sessions list
-                    const sessions = await fetchClassSessions(classId);
-                    displaySessions(sessions);
-
-                    // Show the sessions view
-                    document.getElementById('sessions-view').style.display = 'block';
-                    document.getElementById('attendance-view').style.display = 'none';
-                } else {
-                    alert('Failed to save attendance.');
+        $.ajax({
+            async: true, // Make the request asynchronous (default behavior)
+            cache: false, // Don't cache the request
+            type: "GET", // Use GET method
+            url: "http://localhost/WebLab10/controllers/TeacherAttandanceController.php", // PHP script URL
+            data: { class_id_status: classId }, // Send class_id as a query parameter
+            success: function (status) {
+                const status_check = JSON.parse(status);
+                if(status_check) {
+                    document.getElementById('save-attendance').style.display = "none";
+                    attendanceStatus = true;
+                    alert("Done attendance");
+                }else {
+                    document.getElementById('save-attendance').style.display = "block";
+                    alert("Not done attendance");
                 }
+            },
+            error: function (xhr, status, error) {
+                // Handle errors
+                console.error("Error Determing status:", error);
+                alert("Failed to check status.");
+            }});
+
+        // Use AJAX to send the classId to the PHP script and fetch the students
+        $.ajax({
+            async: true, // Make the request asynchronous (default behavior)
+            cache: false, // Don't cache the request
+            type: "GET", // Use GET method
+            url: "http://localhost/WebLab10/controllers/TeacherAttandanceController.php", // PHP script URL
+            data: { class_id: classId, attendanceStatus }, // Send class_id as a query parameter
+            success: function (students) {
+                // Parse the returned JSON response
+                students = JSON.parse(students);
+
+                // Get the table body element where student data will be populated
+                const tableBody = attendanceView.querySelector('tbody');
+                tableBody.innerHTML = ''; // Clear previous content
+
+                // Check if students data is returned
+                if (students && students.length > 0) {
+                    let status = "";
+                    // Populate the table with student data
+                    students.forEach(student => {
+                        if(attendanceStatus){
+                            status = student.student_status;
+                        }
+                        tableBody.innerHTML += `
+                            <tr>
+                                <td><p>${student.student_name}</p> -  <p style="color: blue;">${status}</p></td>
+                                <td style="display: flex; justify-content: center; align-items: center;">
+                                    <!-- Toggle Button (Present/Absent) -->
+                                     <button 
+                                        style="background-color: green; padding: 4px;" 
+                                        class="attendance-toggle" 
+                                        data-status="present" 
+                                        type="button">
+                                        Present
+                                    </button>
+                                    <input type="hidden" name="attendance[${student.student_id}]" value="present">
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    const toggleButtons = document.querySelectorAll('.attendance-toggle');
+                    toggleButtons.forEach(button => {
+                        button.addEventListener('click', () => {
+                            event.preventDefault();
+                            const input = button.nextElementSibling;
+                            // Toggle button text and data-status attribute
+                            if (button.getAttribute('data-status') === 'Present') {
+                                button.textContent = 'Absent';
+                                button.style.backgroundColor = 'red';
+                                button.setAttribute('data-status', 'Absent');
+                                input.value = "Absent";
+                            } else {
+                                button.textContent = 'Present';
+                                button.style.backgroundColor = 'green';
+                                button.setAttribute('data-status', 'Present');
+                                input.value = "Present";
+                            }
+                        });
+
+                    });
+
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="2">No students found.</td></tr>';
+                }
+            },
+            error: function (xhr, status, error) {
+                // Handle errors
+                console.error("Error fetching students:", error);
+                alert("Failed to load students.");
             }
         });
-    });
 
-    // Toggle attendance status
-    function toggleAttendance(btn) {
-        btn.classList.toggle('present');
-        btn.classList.toggle('absent');
-        btn.textContent = btn.classList.contains('present') ? 'Present' : 'Absent';
-    }
+        
+    });
+});
+
 </script>
